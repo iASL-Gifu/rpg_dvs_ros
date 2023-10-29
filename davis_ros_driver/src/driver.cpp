@@ -476,6 +476,7 @@ void DavisRosDriver::readout()
     int current_interval;
     caerDeviceConfigGet(davis_handle_,CAER_HOST_CONFIG_PACKETS, CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL, &current_interval)
     ROS_INFO("Min Continer Interval %d", current_interval);
+    davisCommonConfigSet(davis_handle_, CAER_HOST_CONFIG_LOG, CAER_HOST_CONFIG_LOG_LEVEL, CAER_LOG_DEBUG)
 
     //std::vector<dvs::Event> events;
 
