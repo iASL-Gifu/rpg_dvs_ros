@@ -1,8 +1,9 @@
-// This file is part of DVS-ROS - the RPG DVS ROS Package
+/ This file is part of DVS-ROS - the RPG DVS ROS Package
 
 #include "davis_ros_driver/driver.h"
 #include "davis_ros_driver/driver_utils.h"
 #include <std_msgs/Int32.h>
+#include <omp.h>
 
 //DAVIS Bias types
 #define CF_N_TYPE(COARSE, FINE) (struct caer_bias_coarsefine) \
@@ -147,6 +148,8 @@ void DavisRosDriver::caerConnect()
 
   davis_info_ = caerDavisInfoGet(davis_handle_);
   device_id_ = "DAVIS-" + std::string(davis_info_.deviceString).substr(14, 8);
+  
+  printf("使用可能な最大スレッド数：%d\n", omp_get_max_threads());
 
   ROS_INFO("%s --- ID: %d, Master: %d, DVS X: %d, DVS Y: %d, Logic: %d.\n", davis_info_.deviceString,
            davis_info_.deviceID, davis_info_.deviceIsMaster, davis_info_.dvsSizeX, davis_info_.dvsSizeY,
@@ -495,7 +498,7 @@ void DavisRosDriver::changeDvsParameters()
             }
             else
             {
-                // BIAS changes for DAVIS240
+                // BIAS 
                 if (parameter_bias_update_required_)
                 {
                     parameter_bias_update_required_ = false;
@@ -648,7 +651,8 @@ void DavisRosDriver::readout()
             }
 
             int32_t packetNum = caerEventPacketContainerGetEventPacketsNumber(packetContainer);
-
+            
+            #pragma omp parallel for
             for (int32_t i = 0; i < packetNum; i++)
             {
                 caerEventPacketHeader packetHeader = caerEventPacketContainerGetEventPacket(packetContainer, i);
