@@ -304,6 +304,7 @@ void DavisRosDriver::changeDvsParameters()
                     caerDeviceConfigSet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, current_config_.exposure);
                 }
                 
+                // caerDeviceConfigSet(Device_handler, Module_Addr, Param_Addr, New_Value)
                 caerDeviceConfigSet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_FRAME_MODE, current_config_.frame_mode);
                 caerDeviceConfigSet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_FRAME_INTERVAL, current_config_.frame_interval);
 
@@ -470,6 +471,11 @@ void DavisRosDriver::callback(davis_ros_driver::DAVIS_ROS_DriverConfig &config, 
 
 void DavisRosDriver::readout()
 {
+    caerLogLevelSet(CAER_LOG_DEBUG);
+    caerDeviceConfigSet(davis_handle_, CAER_HOST_CONFIG_PACKETS, CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,1) 
+    int current_interval;
+    caerDeviceConfigGet(davis_handle_,CAER_HOST_CONFIG_PACKETS, CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL, &current_interval)
+    ROS_INFO("Min Continer Interval %d", current_interval);
 
     //std::vector<dvs::Event> events;
 
