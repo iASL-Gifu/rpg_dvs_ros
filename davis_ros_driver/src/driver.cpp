@@ -4,6 +4,7 @@
 #include "davis_ros_driver/driver_utils.h"
 #include <std_msgs/Int32.h>
 #include <omp.h>
+#include <libcaercpp/devices/davis.hpp>
 
 //DAVIS Bias types
 #define CF_N_TYPE(COARSE, FINE) (struct caer_bias_coarsefine) \
@@ -77,7 +78,7 @@ DavisRosDriver::DavisRosDriver(ros::NodeHandle & nh, ros::NodeHandle nh_private)
   server_->setCallback(dynamic_reconfigure_callback_);
 
   caerConnect();
-  current_config_.streaming_rate = 30;
+  current_config_.streaming_rate = 0;
   delta_ = boost::posix_time::microseconds(long(1e6/current_config_.streaming_rate));
 
   imu_calibration_sub_ = nh_.subscribe((ns + "/calibrate_imu").c_str(), 1, &DavisRosDriver::imuCalibrationCallback, this);
@@ -486,10 +487,12 @@ void DavisRosDriver::readout()
             caerEventPacketContainer packetContainer = caerDeviceDataGet(davis_handle_);
             if (packetContainer == NULL)
             {
+                ROS_INFO("Packet is NULL");
                 continue; // Skip if nothing there.
             }
 
             int32_t packetNum = caerEventPacketContainerGetEventPacketsNumber(packetContainer);
+            ROS_INFO("PacketNumber:  %d ", (int) packetNum);
             
             #pragma omp parallel for
             for (int32_t i = 0; i < packetNum; i++)
@@ -497,6 +500,7 @@ void DavisRosDriver::readout()
                 caerEventPacketHeader packetHeader = caerEventPacketContainerGetEventPacket(packetContainer, i);
                 if (packetHeader == NULL)
                 {
+                    ROS_INFO("Packet --Header-- is NULL");
                     continue; // Skip if nothing there.
                 }
 
@@ -510,11 +514,13 @@ void DavisRosDriver::readout()
                         event_array_msg = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
                         event_array_msg->height = davis_info_.dvsSizeY;
                         event_array_msg->width = davis_info_.dvsSizeX;
+                        event_array_msg->header.frame_id = "davis";
                     }
 
                     caerPolarityEventPacket polarity = (caerPolarityEventPacket) packetHeader;
 
                     const int numEvents = caerEventPacketHeaderGetEventNumber(packetHeader);
+                    ROS_INFO("Events number:  %d ", (int) numEvents);
                     for (int j = 0; j < numEvents; j++)
                     {
                         // Get full timestamp and addresses of first event.
@@ -658,7 +664,7 @@ void DavisRosDriver::readout()
                     // time
                     msg.header.stamp = reset_time_ +
                             ros::Duration().fromNSec(caerFrameEventGetTimestamp64(event, frame) * 1000);
-
+                    msg.header.frame_id = "davis";
                     image_pub_.publish(msg);
 
                     // publish image exposure
