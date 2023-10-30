@@ -1,4 +1,4 @@
-/ This file is part of DVS-ROS - the RPG DVS ROS Package
+// This file is part of DVS-ROS - the RPG DVS ROS Package
 
 #include "davis_ros_driver/driver.h"
 #include "davis_ros_driver/driver_utils.h"
