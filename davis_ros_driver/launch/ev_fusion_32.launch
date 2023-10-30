@@ -21,6 +21,8 @@
 	<node pkg= "davis_ros_driver" type="davis_ros_driver" name="davis_ros_driver">
 	</node>
 
+
+
 	<!--Calibration Publisher -->
 	<node pkg="calibration_publisher" type="calibration_publisher" name="calibration_publisher" output="screen">
 		<param name= "target_frame" value= "velodyne" />
@@ -34,6 +36,16 @@
 		<param name= "projection_matrix_topic" value= "$(arg projection_matrix_topic)" />
 		<param name= "camera_id" value= "$(arg camera_id)" />
 	</node>
+
+
+	<!--DAVIS Event Camera-->
+  	<node name="dvs_renderer" pkg="dvs_renderer" type="dvs_renderer">
+  	  <!-- <param name="display_method" value="grayscale"/> -->
+  	  <param name="display_method" value="red-blue"/>
+  	  <remap from="events" to="/dvs/events" />
+  	  <remap from="image" to="$(arg raw_image_src)" />
+  	  <remap from="camera_info" to="$(arg raw_image_src)" />
+  	</node>
 
 
 	<!--Camera Rectifier-->
