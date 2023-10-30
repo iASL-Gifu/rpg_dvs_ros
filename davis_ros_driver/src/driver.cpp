@@ -483,6 +483,9 @@ void DavisRosDriver::readout()
     {
         try
         {
+            //Start Culc time
+            ros::Time start = ros::Time::now();
+
             caerEventPacketContainer packetContainer = caerDeviceDataGet(davis_handle_);
             if (packetContainer == NULL)
             {
@@ -494,6 +497,8 @@ void DavisRosDriver::readout()
             #pragma omp parallel for
             for (int32_t i = 0; i < packetNum; i++)
             {
+                 
+
                 caerEventPacketHeader packetHeader = caerEventPacketContainerGetEventPacket(packetContainer, i);
                 if (packetHeader == NULL)
                 {
@@ -534,6 +539,7 @@ void DavisRosDriver::readout()
 
                         event_array_msg->events.push_back(e);
                     }
+
 
                     // throttle event messages
                     if (boost::posix_time::microsec_clock::local_time() > next_send_time ||
@@ -682,9 +688,13 @@ void DavisRosDriver::readout()
                     }
                 }
             }
+            //Finish Cucl
+            ros::Time finish = ros::Time::now();
+            double delay = (finish - start).toSec();
+            std::cout << "Delay[/mili sec]:" << delay*1000 << std::endl;
 
             caerEventPacketContainerFree(packetContainer);
-
+            //Time finish
             ros::spinOnce();
         }
         catch(boost::thread_interrupted&)
