@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>event2image</name>
+  <name>events2image</name>
   <version>0.0.0</version>
   <description>The dvs_renderer package</description>
   <maintainer email="mueggler@ifi.uzh.ch">Elias Mueggler</maintainer>
