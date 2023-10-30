@@ -77,7 +77,7 @@ DavisRosDriver::DavisRosDriver(ros::NodeHandle & nh, ros::NodeHandle nh_private)
   server_->setCallback(dynamic_reconfigure_callback_);
 
   caerConnect();
-  current_config_.streaming_rate = 30;
+  current_config_.streaming_rate = 0;
   delta_ = boost::posix_time::microseconds(long(1e6/current_config_.streaming_rate));
 
   imu_calibration_sub_ = nh_.subscribe((ns + "/calibrate_imu").c_str(), 1, &DavisRosDriver::imuCalibrationCallback, this);
