@@ -1,0 +1,26 @@
+<launch>  
+	<arg name="intrinsics_file" default="/home/hermes-18/event_camera/calibration/dv_intri_calib1023.yaml" />
+	<arg name="camera_id" default="/dvs" />
+	<arg name="rectified_image_src" default="$(arg camera_id)/image_rectified" />
+	<arg name="camera_info_src" default="$(arg camera_id)/dvs_info" />
+	<arg name="projection_matrix_topic" default="$(arg camera_id)/projection_matrix" />
+
+
+	<!-- VELODYNE VLP-16 -->
+	<include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch">
+	</include>
+
+	<!--DAVIS Event Camera-->
+	<include file="$(find dvs_renderer)/launch/davis_mono.launch">
+	</include>
+
+	<!-- RVIZ -->	
+	<node pkg="rviz" type="rviz" name="rviz">
+	</node>
+
+	<!-- Calibration Extrinsics -->
+	<include file="$(find autoware_camera_lidar_calibrator)/launch/camera_lidar_calibration.launch">
+		<arg name="intrinsics_file" value="$(arg intrinsics_file)"/>
+		<arg name="image_src" value="/dvs/image_raw"/>
+	</include>
+</launch>

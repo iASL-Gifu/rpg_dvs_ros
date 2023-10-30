@@ -1,0 +1,67 @@
+<launch>  
+	<!-- DELAY PARAM-->
+	<arg name="rectifier_delay" default="2.0" />
+	<arg name="pixel_cloud_fusion_delay" default="4.0" />
+	<arg name="Points2Image_delay" default="7.0" />
+
+	<!-- TOPIC PARAM-->
+	<arg name="LiDAR_src" default="/velodyne_points" />
+	<arg name="camera_id" default="/dvs" />
+	<arg name="raw_image_src" default="/dvs_rendering" />
+	<arg name="rectified_image_src" default="$(arg camera_id)/image_rectified" />
+	<arg name="camera_info_src" default="$(arg camera_id)/dvs_info" />
+	<arg name="projection_matrix_topic" default="$(arg camera_id)/projection_matrix" />
+
+
+	<!-- VELODYNE VLP-16 -->
+	<include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch">
+	</include>
+
+	<!--DAVIS Event Camera-->
+	<include file="$(find dvs_renderer)/launch/davis_mono.launch">
+	</include>
+
+
+	<!--Calibration Publisher -->
+	<node pkg="calibration_publisher" type="calibration_publisher" name="calibration_publisher" output="screen">
+		<param name= "target_frame" value= "velodyne" />
+		<param name= "camera_frame" value= "davis" />
+		<param name= "calibration_file" value= "/home/hermes-18/event_camera/calibration/1027_ev_li_21_ePnP.yaml" />
+
+		<param name= "register_lidar2camera_tf" value= "True" />
+		<param name= "publish_extrinsic_mat" value= "True" />
+		<param name= "publish_camera_info" value= "True" />
+		<param name= "camera_info_topic" value= "$(arg camera_info_src)" />
+		<param name= "image_topic_src" value= "$(arg raw_image_src)" />
+		<param name= "projection_matrix_topic" value= "$(arg projection_matrix_topic)" />
+		<param name= "camera_id" value= "$(arg camera_id)" />
+	</node>
+
+
+	<!--Camera Rectifier-->
+	<!--NOTE:: Cannot chanege /image_rectified-->
+	<node pkg="image_processor" type="image_rectifier" name="image_rectifier" output="screen" launch-prefix="bash -c 'sleep $(arg rectifier_delay); $0 $@' ">
+		<param name="image_src" value="$(arg raw_image_src)" />
+		<param name="camera_info_src" value="$(arg camera_info_src)" />
+	</node>
+
+	<!--Rectifier RELAY-->
+	<node pkg="topic_tools" type="relay" name="relay" output="screen" args="image_rectified $(arg rectified_image_src)" launch-prefix="bash -c 'sleep $(arg rectifier_delay); $0 $@' " >
+	</node>
+
+	<!--Pixel Cloud Fusion -->
+	<node name="pixel_cloud_fusion" pkg="pixel_cloud_fusion" type="pixel_cloud_fusion" launch-prefix="bash -c 'sleep $(arg pixel_cloud_fusion_delay); $0 $@' " output="screen">
+		<param name="points_src" value="$(arg LiDAR_src)" />
+		<param name="image_src" value="$(arg rectified_image_src)" />
+		<param name="camera_info_src" value="$(arg camera_info_src)" />
+	</node>
+	
+	<!--Points2Image-->
+	<node name="points2image" pkg="points2image" type="points2image" launch-prefix="bash -c 'sleep $(arg Points2Image_delay); $0 $@' " output="screen">
+		<param name="points_node" value="$(arg LiDAR_src)" />
+		<param name="projection_matrix_topic" value="$(arg projection_matrix_topic)" />
+		<param name="camera_info_topic" value="$(arg camera_info_src)" />
+	</node>
+	<node pkg="rviz" type="rviz" name="rviz">
+	</node>
+</launch>
