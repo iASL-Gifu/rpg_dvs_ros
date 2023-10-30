@@ -7,7 +7,7 @@
 	<!-- TOPIC PARAM-->
 	<arg name="LiDAR_src" default="/velodyne_points" />
 	<arg name="camera_id" default="/dvs" />
-	<arg name="raw_image_src" default="/dvs_rendering" />
+	<arg name="raw_image_src" default="/dvs/image_raw" />
 	<arg name="rectified_image_src" default="$(arg camera_id)/image_rectified" />
 	<arg name="camera_info_src" default="$(arg camera_id)/dvs_info" />
 	<arg name="projection_matrix_topic" default="$(arg camera_id)/projection_matrix" />
@@ -18,15 +18,14 @@
 	</include>
 
 	<!--DAVIS Event Camera-->
-	<include file="$(find dvs_renderer)/launch/davis_mono.launch">
-	</include>
-
+	<node pkg= "davis_ros_driver" type="davis_ros_driver" name="davis_ros_driver">
+	</node>
 
 	<!--Calibration Publisher -->
 	<node pkg="calibration_publisher" type="calibration_publisher" name="calibration_publisher" output="screen">
 		<param name= "target_frame" value= "velodyne" />
 		<param name= "camera_frame" value= "davis" />
-		<param name= "calibration_file" value= "/home/hermes-18/event_camera/0919_ev_li.yaml" />
+		<param name= "calibration_file" value= "/home/hermes-18/event_camera/calibration/1027_ev_li_21_ePnP.yaml" />
 		<param name= "register_lidar2camera_tf" value= "True" />
 		<param name= "publish_extrinsic_mat" value= "True" />
 		<param name= "publish_camera_info" value= "True" />
