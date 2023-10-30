@@ -489,11 +489,12 @@ void DavisRosDriver::readout()
             caerEventPacketContainer packetContainer = caerDeviceDataGet(davis_handle_);
             if (packetContainer == NULL)
             {
+                //ROS_INFO("Packet is NULL");
                 continue; // Skip if nothing there.
             }
 
             int32_t packetNum = caerEventPacketContainerGetEventPacketsNumber(packetContainer);
-            
+            //ROS_INFO("How many Packets:  %d ", (int) packetNum);
             #pragma omp parallel for
             for (int32_t i = 0; i < packetNum; i++)
             {
@@ -502,6 +503,7 @@ void DavisRosDriver::readout()
                 caerEventPacketHeader packetHeader = caerEventPacketContainerGetEventPacket(packetContainer, i);
                 if (packetHeader == NULL)
                 {
+                    //ROS_INFO("NULL Packet Header");
                     continue; // Skip if nothing there.
                 }
 
@@ -510,6 +512,7 @@ void DavisRosDriver::readout()
                 // Packet 0 is always the special events packet for DVS128, while packet is the polarity events packet.
                 if (type == POLARITY_EVENT)
                 {
+
                     if (!event_array_msg)
                     {
                         event_array_msg = dvs_msgs::EventArrayPtr(new dvs_msgs::EventArray());
@@ -520,6 +523,7 @@ void DavisRosDriver::readout()
                     caerPolarityEventPacket polarity = (caerPolarityEventPacket) packetHeader;
 
                     const int numEvents = caerEventPacketHeaderGetEventNumber(packetHeader);
+                    ROS_INFO("How many Events:  %d ", (int) numEvents);
                     for (int j = 0; j < numEvents; j++)
                     {
                         // Get full timestamp and addresses of first event.
@@ -539,27 +543,9 @@ void DavisRosDriver::readout()
 
                         event_array_msg->events.push_back(e);
                     }
-
-
-                    // throttle event messages
-                    if (boost::posix_time::microsec_clock::local_time() > next_send_time ||
-                            current_config_.streaming_rate == 0 ||
-                            (current_config_.max_events != 0 && event_array_msg->events.size() > current_config_.max_events)
-                            )
-                    {
-                        event_array_pub_.publish(event_array_msg);
-
-                        if (current_config_.streaming_rate > 0)
-                        {
-                            next_send_time += delta_;
-                        }
-                        if (current_config_.max_events != 0 && event_array_msg->events.size() > current_config_.max_events)
-                        {
-                            next_send_time = boost::posix_time::microsec_clock::local_time() + delta_;
-                        }
-
-                        event_array_msg.reset();
-                    }
+                    //Pub events
+                    event_array_pub_.publish(event_array_msg);
+                    event_array_msg.reset();
 
                     if (camera_info_manager_->isCalibrated())
                     {
@@ -567,134 +553,135 @@ void DavisRosDriver::readout()
                         camera_info_pub_.publish(camera_info_msg);
                     }
                 }
-                else if (type == IMU6_EVENT)
-                {
-                    caerIMU6EventPacket imu = (caerIMU6EventPacket) packetHeader;
+                //else if (type == IMU6_EVENT)
+                //{
+                //    caerIMU6EventPacket imu = (caerIMU6EventPacket) packetHeader;
 
-                    const int numEvents = caerEventPacketHeaderGetEventNumber(packetHeader);
+                //    const int numEvents = caerEventPacketHeaderGetEventNumber(packetHeader);
 
-                    for (int j = 0; j < numEvents; j++)
-                    {
-                        caerIMU6Event event = caerIMU6EventPacketGetEvent(imu, j);
+                //    for (int j = 0; j < numEvents; j++)
+                //    {
+                //        caerIMU6Event event = caerIMU6EventPacketGetEvent(imu, j);
 
-                        sensor_msgs::Imu msg;
-                        
-                        // convert from g's to m/s^2 and align axes with camera frame
-                        msg.linear_acceleration.x = -caerIMU6EventGetAccelX(event) * STANDARD_GRAVITY;
-                        msg.linear_acceleration.y = caerIMU6EventGetAccelY(event) * STANDARD_GRAVITY;
-                        msg.linear_acceleration.z = -caerIMU6EventGetAccelZ(event) * STANDARD_GRAVITY;
-                        // convert from deg/s to rad/s and align axes with camera frame
-                        msg.angular_velocity.x = -caerIMU6EventGetGyroX(event) / 180.0 * M_PI;
-                        msg.angular_velocity.y = caerIMU6EventGetGyroY(event) / 180.0 * M_PI;
-                        msg.angular_velocity.z = -caerIMU6EventGetGyroZ(event) / 180.0 * M_PI;
+                //        sensor_msgs::Imu msg;
+                //        
+                //        // convert from g's to m/s^2 and align axes with camera frame
+                //        msg.linear_acceleration.x = -caerIMU6EventGetAccelX(event) * STANDARD_GRAVITY;
+                //        msg.linear_acceleration.y = caerIMU6EventGetAccelY(event) * STANDARD_GRAVITY;
+                //        msg.linear_acceleration.z = -caerIMU6EventGetAccelZ(event) * STANDARD_GRAVITY;
+                //        // convert from deg/s to rad/s and align axes with camera frame
+                //        msg.angular_velocity.x = -caerIMU6EventGetGyroX(event) / 180.0 * M_PI;
+                //        msg.angular_velocity.y = caerIMU6EventGetGyroY(event) / 180.0 * M_PI;
+                //        msg.angular_velocity.z = -caerIMU6EventGetGyroZ(event) / 180.0 * M_PI;
 
-                        // no orientation estimate: http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
-                        msg.orientation_covariance[0] = -1.0;
+                //        // no orientation estimate: http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
+                //        msg.orientation_covariance[0] = -1.0;
 
-                        // time
-                        msg.header.stamp = reset_time_ +
-                                ros::Duration().fromNSec(caerIMU6EventGetTimestamp64(event, imu) * 1000);
+                //        // time
+                //        msg.header.stamp = reset_time_ +
+                //                ros::Duration().fromNSec(caerIMU6EventGetTimestamp64(event, imu) * 1000);
 
-                        // frame
-                        msg.header.frame_id = "base_link";
+                //        // frame
+                //        msg.header.frame_id = "base_link";
 
-                        // IMU calibration
-                        if (imu_calibration_running_)
-                        {
-                            if (imu_calibration_samples_.size() < imu_calibration_sample_size_)
-                            {
-                                imu_calibration_samples_.push_back(msg);
-                            }
-                            else
-                            {
-                                imu_calibration_running_ = false;
-                                updateImuBias();
-                            }
-                        }
+                //        // IMU calibration
+                //        if (imu_calibration_running_)
+                //        {
+                //            if (imu_calibration_samples_.size() < imu_calibration_sample_size_)
+                //            {
+                //                imu_calibration_samples_.push_back(msg);
+                //            }
+                //            else
+                //            {
+                //                imu_calibration_running_ = false;
+                //                updateImuBias();
+                //            }
+                //        }
 
-                        // bias correction
-                        msg.linear_acceleration.x -= bias.linear_acceleration.x;
-                        msg.linear_acceleration.y -= bias.linear_acceleration.y;
-                        msg.linear_acceleration.z -= bias.linear_acceleration.z;
-                        msg.angular_velocity.x -= bias.angular_velocity.x;
-                        msg.angular_velocity.y -= bias.angular_velocity.y;
-                        msg.angular_velocity.z -= bias.angular_velocity.z;
+                //        // bias correction
+                //        msg.linear_acceleration.x -= bias.linear_acceleration.x;
+                //        msg.linear_acceleration.y -= bias.linear_acceleration.y;
+                //        msg.linear_acceleration.z -= bias.linear_acceleration.z;
+                //        msg.angular_velocity.x -= bias.angular_velocity.x;
+                //        msg.angular_velocity.y -= bias.angular_velocity.y;
+                //        msg.angular_velocity.z -= bias.angular_velocity.z;
 
-                        imu_pub_.publish(msg);
-                    }
-                }
-                else if (type == FRAME_EVENT)
-                {
-                    caerFrameEventPacket frame = (caerFrameEventPacket) packetHeader;
-                    caerFrameEvent event = caerFrameEventPacketGetEvent(frame, 0);
+                //        imu_pub_.publish(msg);
+                //    }
+                //}
+                //else if (type == FRAME_EVENT)
+                //{
+                //    caerFrameEventPacket frame = (caerFrameEventPacket) packetHeader;
+                //    caerFrameEvent event = caerFrameEventPacketGetEvent(frame, 0);
 
-                    uint16_t* image = caerFrameEventGetPixelArrayUnsafe(event);
+                //    uint16_t* image = caerFrameEventGetPixelArrayUnsafe(event);
 
-                    sensor_msgs::Image msg;
-                    
-                    // get image metadata
-                    caer_frame_event_color_channels frame_channels = caerFrameEventGetChannelNumber(event);
-                    const int32_t frame_width = caerFrameEventGetLengthX(event);
-                    const int32_t frame_height = caerFrameEventGetLengthY(event);
-                    
-                    // set message metadata
-                    msg.width = frame_width;
-                    msg.height = frame_height;
-                    msg.step = frame_width * frame_channels;
-                    
-                    if (frame_channels==1)
-                    {
-                      msg.encoding = "mono8";
-                    }
-                    else if (frame_channels==3)
-                    {
-                      msg.encoding = "rgb8";
-                    }
-                    
-                    // set message data
-                    for (int img_y=0; img_y<frame_height*frame_channels; img_y++)
-                    {
-                        for (int img_x=0; img_x<frame_width; img_x++)
-                        {
-                            const uint16_t value = image[img_y*frame_width + img_x];
-                            msg.data.push_back(value >> 8);
-                        }
-                    }
+                //    sensor_msgs::Image msg;
+                //    
+                //    // get image metadata
+                //    caer_frame_event_color_channels frame_channels = caerFrameEventGetChannelNumber(event);
+                //    const int32_t frame_width = caerFrameEventGetLengthX(event);
+                //    const int32_t frame_height = caerFrameEventGetLengthY(event);
+                //    
+                //    // set message metadata
+                //    msg.width = frame_width;
+                //    msg.height = frame_height;
+                //    msg.step = frame_width * frame_channels;
+                //    
+                //    if (frame_channels==1)
+                //    {
+                //      msg.encoding = "mono8";
+                //    }
+                //    else if (frame_channels==3)
+                //    {
+                //      msg.encoding = "rgb8";
+                //    }
+                //    
+                //    // set message data
+                //    for (int img_y=0; img_y<frame_height*frame_channels; img_y++)
+                //    {
+                //        for (int img_x=0; img_x<frame_width; img_x++)
+                //        {
+                //            const uint16_t value = image[img_y*frame_width + img_x];
+                //            msg.data.push_back(value >> 8);
+                //        }
+                //    }
 
-                    // time
-                    msg.header.stamp = reset_time_ +
-                            ros::Duration().fromNSec(caerFrameEventGetTimestamp64(event, frame) * 1000);
+                //    // time
+                //    msg.header.stamp = reset_time_ +
+                //            ros::Duration().fromNSec(caerFrameEventGetTimestamp64(event, frame) * 1000);
 
-                    image_pub_.publish(msg);
+                //    image_pub_.publish(msg);
 
-                    // publish image exposure
-                    const int32_t exposure_time_microseconds = caerFrameEventGetExposureLength(event);
-                    std_msgs::Int32 exposure_msg;
-                    exposure_msg.data = exposure_time_microseconds;
-                    if(exposure_pub_.getNumSubscribers() > 0)
-                    {
-                      exposure_pub_.publish(exposure_msg);
-                    }
+                //    // publish image exposure
+                //    const int32_t exposure_time_microseconds = caerFrameEventGetExposureLength(event);
+                //    std_msgs::Int32 exposure_msg;
+                //    exposure_msg.data = exposure_time_microseconds;
+                //    if(exposure_pub_.getNumSubscribers() > 0)
+                //    {
+                //      exposure_pub_.publish(exposure_msg);
+                //    }
 
-                    // auto-exposure algorithm
-                    if(current_config_.autoexposure_enabled)
-                    {
-                        // using the requested exposure instead of the actual, measured one gives more stable results
-                        uint32_t current_exposure;
-                        caerDeviceConfigGet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, &current_exposure);
-                        const int new_exposure = computeNewExposure(msg.data, current_exposure);
+                //    // auto-exposure algorithm
+                //    if(current_config_.autoexposure_enabled)
+                //    {
+                //        // using the requested exposure instead of the actual, measured one gives more stable results
+                //        uint32_t current_exposure;
+                //        caerDeviceConfigGet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, &current_exposure);
+                //        const int new_exposure = computeNewExposure(msg.data, current_exposure);
 
-                        caerDeviceConfigSet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, new_exposure);
-                    }
-                }
+                //        caerDeviceConfigSet(davis_handle_, DAVIS_CONFIG_APS, DAVIS_CONFIG_APS_EXPOSURE, new_exposure);
+                //    }
+                //}
             }
-            //Finish Cucl
-            ros::Time finish = ros::Time::now();
-            double delay = (finish - start).toSec();
-            std::cout << "Delay[/mili sec]:" << delay*1000 << std::endl;
 
             caerEventPacketContainerFree(packetContainer);
             //Time finish
+            //Finish Cucl
+            ros::Time finish = ros::Time::now();
+            double delay = (finish - start).toSec();
+            std::cout << "Delay[/mili sec]:     " << delay*1000 << std::endl;
+
             ros::spinOnce();
         }
         catch(boost::thread_interrupted&)
