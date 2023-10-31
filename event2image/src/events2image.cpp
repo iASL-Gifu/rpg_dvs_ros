@@ -30,7 +30,7 @@ class Events2Image
           ev_queue.push(*msg);
 
           //If Packets > 1000
-          if (ev_queue.size() > 1000)
+          if (ev_queue.size() > 500)
           {
             cv_bridge::CvImage cv_image;
 
@@ -39,10 +39,11 @@ class Events2Image
             cv_image.image = cv::Mat(msg->height, msg->width, CV_8UC3);
             cv_image.image = cv::Scalar(0,0,0);
             //Each Packets
-            for (int pkt_num = 0; pkt_num < 1000; pkt_num++)
+            for (int pkt_num = 0; pkt_num < 500; pkt_num++)
             {
               dvs_msgs::EventArray e_pkt = ev_queue.front(); 
-              if (pkt_num == 500)
+              ev_queue.pop();
+              if (pkt_num == 250)
               {
                 cv_image.header.stamp =e_pkt.events[e_pkt.events.size()/2].ts; 
               }
@@ -53,7 +54,10 @@ class Events2Image
                 const int y = e_pkt.events[i].y;
         
                 cv_image.image.at<cv::Vec3b>(cv::Point(x, y)) = (
-                    e_pkt.events[i].polarity == true ? cv::Vec3b(255, 0, 0) : cv::Vec3b(0, 0, 255));
+                    e_pkt.events[i].polarity == true ? cv::Vec3b(0, 255, 0) : cv::Vec3b(255, 255, 255));
+                //RED-BLUE
+                //cv_image.image.at<cv::Vec3b>(cv::Point(x, y)) = (
+                //   e_pkt.events[i].polarity == true ? cv::Vec3b(255, 0, 0) : cv::Vec3b(0, 0, 255));
               }
             }
               image_pub.publish(cv_image.toImageMsg());
