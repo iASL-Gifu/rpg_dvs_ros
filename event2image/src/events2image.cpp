@@ -22,6 +22,7 @@ class Events2Image
         ros::Publisher  image_pub;
         ros::Subscriber event_sub;   
         std::queue <dvs_msgs::EventArray> ev_queue;
+        int dequeue_pkts = 300;
 
     public:
         void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
@@ -29,8 +30,8 @@ class Events2Image
           //Store Events
           ev_queue.push(*msg);
 
-          //If Packets > 1000
-          if (ev_queue.size() > 500)
+          //If Packets Store  enough
+          if (ev_queue.size() > dequeue_pkts)
           {
             cv_bridge::CvImage cv_image;
 
@@ -38,12 +39,13 @@ class Events2Image
             cv_image.encoding = "bgr8";
             cv_image.image = cv::Mat(msg->height, msg->width, CV_8UC3);
             cv_image.image = cv::Scalar(0,0,0);
-            //Each Packets
-            for (int pkt_num = 0; pkt_num < 500; pkt_num++)
+            //Open Each Packets
+            for (int pkt_num = 0; pkt_num < dequeue_pkts; pkt_num++)
             {
               dvs_msgs::EventArray e_pkt = ev_queue.front(); 
               ev_queue.pop();
-              if (pkt_num == 250)
+              //Use Avenrage Time-Stamp
+              if (pkt_num == dequeue_pkts / 2)
               {
                 cv_image.header.stamp =e_pkt.events[e_pkt.events.size()/2].ts; 
               }

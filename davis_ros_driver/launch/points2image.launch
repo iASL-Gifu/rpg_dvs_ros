@@ -13,14 +13,6 @@
 	<arg name="projection_matrix_topic" default="$(arg camera_id)/projection_matrix" />
 
 
-	<!-- VELODYNE VLP-32C-->
-	<include file="$(find velodyne_pointcloud)/launch/VLP-32C_points.launch">
-		<arg name="rpm" value="600"/>
-	</include>
-
-	<!--DAVIS Event Camera-->
-	<node pkg= "davis_ros_driver" type="davis_ros_driver" name="davis_ros_driver">
-	</node>
 
 
 
@@ -39,37 +31,6 @@
 	</node>
 
 
-	<!--DAVIS renderer-->
-  	<node name="dvs_renderer" pkg="dvs_renderer" type="dvs_renderer">
-  	  <!-- <param name="display_method" value="grayscale"/> -->
-  	  <param name="display_method" value="red-blue"/>
-  	  <remap from="events" to="/dvs/events" />
-  	  <remap from="image" to="$(arg raw_image_src)" />
-  	  <remap from="camera_info" to="$(arg raw_image_src)/aaa" />
-  	</node>
-
-	<!-- Events2Image-->
-  	<node name="events2image" pkg="events2image" type="events2image">
-  	</node>
-
-	<!--Camera Rectifier-->
-	<!--NOTE:: Cannot chanege /image_rectified-->
-	<node pkg="image_processor" type="image_rectifier" name="image_rectifier" output="screen" launch-prefix="bash -c 'sleep $(arg rectifier_delay); $0 $@' ">
-		<param name="image_src" value="$(arg raw_image_src)" />
-		<param name="camera_info_src" value="$(arg camera_info_src)" />
-	</node>
-
-	<!--Rectifier RELAY-->
-	<node pkg="topic_tools" type="relay" name="relay" output="screen" args="image_rectified $(arg rectified_image_src)" launch-prefix="bash -c 'sleep $(arg rectifier_delay); $0 $@' " >
-	</node>
-
-	<!--Pixel Cloud Fusion>
-	<node name="pixel_cloud_fusion" pkg="pixel_cloud_fusion" type="pixel_cloud_fusion" launch-prefix="bash -c 'sleep $(arg pixel_cloud_fusion_delay); $0 $@' " output="screen">
-		<param name="points_src" value="$(arg LiDAR_src)" />
-		<param name="image_src" value="$(arg rectified_image_src)" />
-		<param name="camera_info_src" value="$(arg camera_info_src)" />
-	</node-->
-	
 	<!--Points2Image-->
 	<node name="points2image" pkg="points2image" type="points2image" launch-prefix="bash -c 'sleep $(arg Points2Image_delay); $0 $@' " output="screen">
 		<param name="points_node" value="$(arg LiDAR_src)" />
