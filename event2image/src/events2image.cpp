@@ -13,41 +13,58 @@
 #include <dvs_msgs/Event.h>
 #include <dvs_msgs/EventArray.h>
 #include <std_msgs/Float32.h>
+#include <queue>
 
-class SubPub
+class Events2Image 
 {
     private:
 	ros::NodeHandle nh;
         ros::Publisher  image_pub;
         ros::Subscriber event_sub;   
+        std::queue <dvs_msgs::EventArray> ev_queue;
+
     public:
         void eventsCallback(const dvs_msgs::EventArray::ConstPtr& msg)
         {
-          cv_bridge::CvImage cv_image;
-          if (msg->events.size() > 0)
+          //Store Events
+          ev_queue.push(*msg);
+
+          //If Packets > 1000
+          if (ev_queue.size() > 1000)
           {
-            cv_image.header.stamp = msg->events[msg->events.size()/2].ts;
-          }
-          //Make image
-          cv_image.encoding = "bgr8";
-          cv_image.image = cv::Mat(msg->height, msg->width, CV_8UC3);
-          cv_image.image = cv::Scalar(0,0,0);
+            cv_bridge::CvImage cv_image;
+
+            //Make image
+            cv_image.encoding = "bgr8";
+            cv_image.image = cv::Mat(msg->height, msg->width, CV_8UC3);
+            cv_image.image = cv::Scalar(0,0,0);
+            //Each Packets
+            for (int pkt_num = 0; pkt_num < 1000; pkt_num++)
+            {
+              dvs_msgs::EventArray e_pkt = ev_queue.front(); 
+              if (pkt_num == 500)
+              {
+                cv_image.header.stamp =e_pkt.events[e_pkt.events.size()/2].ts; 
+              }
+              
+              for (int i = 0; i < e_pkt.events.size(); ++i)
+              {
+                const int x = e_pkt.events[i].x;
+                const int y = e_pkt.events[i].y;
         
-          for (int i = 0; i < msg->events.size(); ++i)
-          {
-            const int x = msg->events[i].x;
-            const int y = msg->events[i].y;
+                cv_image.image.at<cv::Vec3b>(cv::Point(x, y)) = (
+                    e_pkt.events[i].polarity == true ? cv::Vec3b(255, 0, 0) : cv::Vec3b(0, 0, 255));
+              }
+            }
+              image_pub.publish(cv_image.toImageMsg());
+            }
         
-            cv_image.image.at<cv::Vec3b>(cv::Point(x, y)) = (
-                msg->events[i].polarity == true ? cv::Vec3b(255, 0, 0) : cv::Vec3b(0, 0, 255));
-          }
-          image_pub.publish(cv_image.toImageMsg());
         }
         
-        SubPub()
+        Events2Image()
         {
           image_pub = nh.advertise<sensor_msgs::Image>("eventsImage", 1);
-          event_sub = nh.subscribe("/dvs/events", 1, &SubPub::eventsCallback, this);
+          event_sub = nh.subscribe("/dvs/events", 1, &Events2Image::eventsCallback, this);
         }
 
 };
@@ -57,8 +74,7 @@ class SubPub
 int main(int argc, char** argv)
 {
 	ros::init(argc,argv, "event2image");
-        
-        SubPub subpub;
+        Events2Image subpub;
 	ros::spin();
 	return 0;
 }
